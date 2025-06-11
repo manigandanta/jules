@@ -1,0 +1,90 @@
+body {
+  width: 400px;
+  padding: 10px;
+  font-family: sans-serif;
+  background-color: #f9f9f9;
+}
+
+h1 {
+  font-size: 1.5em;
+  text-align: center;
+  color: #333;
+  margin-bottom: 15px;
+}
+
+#screenshotCanvas {
+  border: 1px solid #ccc;
+  max-width: 100%;
+  display: block; /* To allow margin auto to center if needed, and prevent extra space below */
+  margin: 0 auto 10px auto; /* Center the canvas and add margin below */
+  background-color: #fff; /* In case the captured image has transparency */
+}
+
+button { /* General button styling */
+  margin: 5px 0;
+  padding: 10px 15px;
+  font-size: 0.9em;
+  color: #fff;
+  background-color: #007bff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: block; /* Make buttons take full available width in their container */
+  width: 100%;
+  box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+/* Specific button styling if needed, e.g., for save button */
+#saveBtn {
+  background-color: #28a745; /* Green for save */
+}
+
+#saveBtn:hover {
+  background-color: #1e7e34;
+}
+
+.controls-container {
+  margin-top: 10px;
+  margin-bottom: 10px;
+  padding: 10px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+}
+
+.control-group {
+  margin-bottom: 10px;
+  display: flex; /* Use flexbox for alignment */
+  align-items: center; /* Vertically align items in the center */
+}
+
+.control-group:last-child {
+  margin-bottom: 0; /* Remove margin for the last control group */
+}
+
+.control-group label {
+  display: inline-block;
+  margin-right: 10px;
+  width: 90px; /* Fixed width for labels */
+  font-size: 0.9em;
+  color: #555;
+}
+
+.control-group input[type="color"] {
+  width: 60px; /* Specific width for color picker */
+  height: 30px;
+  padding: 0px 2px; /* Minimal padding for color input */
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.control-group input[type="number"] {
+  width: 70px; /* Specific width for number input */
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
