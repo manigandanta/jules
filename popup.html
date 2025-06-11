@@ -6,7 +6,8 @@
 </head>
 <body>
   <h1>Screenshot Tool</h1>
-  <button id="captureBtn">Capture Screenshot</button>
+  <button id="captureBtn">Capture Full Page</button> <!-- Renamed for clarity -->
+  <button id="captureAreaBtn" class="tool-btn">Capture Area</button>
   <canvas id="screenshotCanvas"></canvas>
   <div class="controls-container">
     <div class="control-group">
@@ -17,8 +18,31 @@
       <label for="lineWidth">Line Width:</label>
       <input type="number" id="lineWidth" value="5" min="1" max="50">
     </div>
+    <hr class="tool-separator"> <!-- Separator before tools -->
+    <button id="drawToolBtn" class="tool-btn">Draw</button>
+    <button id="cropBtn" class="tool-btn">Crop</button>
+    <button id="textToolBtn" class="tool-btn">Text</button>
+    <div class="control-group">
+      <label for="textInput">Text:</label>
+      <input type="text" id="textInput" placeholder="Enter text">
+    </div>
+    <div class="control-group">
+      <label for="fontSizeInput">Font Size:</label>
+      <input type="number" id="fontSizeInput" value="16" min="8" max="72">px
+    </div>
+    <hr class="tool-separator">
+    <button id="rectToolBtn" class="tool-btn">Rectangle</button>
+    <button id="circleToolBtn" class="tool-btn">Circle</button>
+    <div class="control-group">
+      <label for="shapeFillCheckbox" style="width: auto; margin-right: 5px;">Fill Shape:</label> <!-- Adjusted label styling for checkbox -->
+      <input type="checkbox" id="shapeFillCheckbox">
+    </div>
   </div>
-  <button id="saveBtn">Save Image</button>
+  <button id="applyCropBtn" style="display:none; background-color: #ffc107; margin-top: 5px;">Apply Crop</button>
+  <div class="output-actions"> <!-- Grouping output buttons -->
+    <button id="saveBtn">Save Image</button>
+    <button id="copyToClipboardBtn">Copy to Clipboard</button>
+  </div>
   <script src="popup.js"></script>
 </body>
 </html>

@@ -88,3 +88,47 @@ button:hover {
   border-radius: 4px;
   font-size: 0.9em;
 }
+
+.output-actions {
+  display: flex; /* Arrange buttons in a row */
+  gap: 10px; /* Space between buttons */
+  margin-top: 10px; /* Space above this group */
+}
+
+.output-actions button {
+  flex-grow: 1; /* Allow buttons to share space equally */
+  /* width: auto; */ /* Override previous width: 100% from general button style */
+}
+
+.tool-btn {
+  background-color: #6c757d; /* Standard tool button color */
+  margin-bottom: 8px; /* Space between tool buttons and control groups */
+}
+.tool-btn:hover {
+  background-color: #5a6268;
+}
+.tool-btn.active {
+  background-color: #007bff; /* Active tool color - same as primary buttons for now */
+  font-weight: bold;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+hr.tool-separator {
+  margin: 10px 0;
+  border: 0;
+  border-top: 1px solid #ccc;
+}
+
+/* Ensure inputs in control groups take up remaining space if label is fixed width */
+.control-group input[type="text"],
+.control-group input[type="number"] { /* Apply to number as well for consistency if desired */
+  flex-grow: 1; /* Allows input to expand */
+  /* width: auto; */ /* Override fixed width if previously set for number and now using flex */
+}
+
+.control-group input[type="text"] {
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
