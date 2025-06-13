@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Editor</title>
+    <link rel="stylesheet" href="editor.css">
+</head>
+<body>
+    <div class="editor-container">
+        <header class="editor-header">
+            <h1>Image Editor</h1>
+        </header>
+
+        <div class="editor-main">
+            <aside class="editor-sidebar">
+                <h2>Tools</h2>
+                <div class="controls-container">
+                    <button id="drawToolBtn" class="tool-btn">Draw</button>
+                    <button id="cropBtn" class="tool-btn">Crop</button>
+                    <button id="textToolBtn" class="tool-btn">Text</button>
+                    <button id="rectToolBtn" class="tool-btn">Rectangle</button>
+                    <button id="circleToolBtn" class="tool-btn">Circle</button>
+
+                    <hr class="tool-separator">
+
+                    <div class="control-group">
+                        <label for="colorPicker">Color:</label>
+                        <input type="color" id="colorPicker" value="#FF0000">
+                    </div>
+                    <div class="control-group">
+                        <label for="lineWidth">Line Width:</label>
+                        <input type="number" id="lineWidth" value="5" min="1" max="50">
+                    </div>
+
+                    <!-- Text Tool Specific -->
+                    <div class="control-group text-tool-control" style="display:none;">
+                        <label for="textInput">Text:</label>
+                        <input type="text" id="textInput" placeholder="Enter text">
+                    </div>
+                    <div class="control-group text-tool-control" style="display:none;">
+                        <label for="fontSizeInput">Font Size:</label>
+                        <input type="number" id="fontSizeInput" value="16" min="8" max="72">px
+                    </div>
+
+                    <!-- Shape Tool Specific -->
+                    <div class="control-group shape-tool-control" style="display:none;">
+                        <label for="shapeFillCheckbox" style="width: auto; margin-right: 5px;">Fill Shape:</label>
+                        <input type="checkbox" id="shapeFillCheckbox">
+                    </div>
+
+                    <hr class="tool-separator">
+                    <button id="applyCropBtn" style="display:none; background-color: #ffc107;">Apply Crop</button>
+                </div>
+
+                <div class="output-actions editor-output-actions">
+                    <button id="saveBtn">Save Image</button>
+                    <button id="copyToClipboardBtn">Copy to Clipboard</button>
+                </div>
+            </aside>
+
+            <section class="editor-canvas-area">
+                <canvas id="editorCanvas"></canvas>
+                <p id="noImageMessage" style="display:none; text-align:center;">
+                    No image loaded. Capture or select an image via the extension popup.
+                </p>
+            </section>
+        </div>
+    </div>
+    <script src="editor.js"></script>
+</body>
+</html>
