@@ -7,24 +7,56 @@ document.addEventListener('DOMContentLoaded', () => {
   const lineWidthInput = document.getElementById('lineWidth');
   const saveBtn = document.getElementById('saveBtn');
   const copyToClipboardBtn = document.getElementById('copyToClipboardBtn');
+  const openInEditorBtn = document.getElementById('openInEditorBtn'); // New button
 
-  // Tool buttons
-  const drawToolBtn = document.getElementById('drawToolBtn'); // New draw button
+  const drawToolBtn = document.getElementById('drawToolBtn');
   const cropBtn = document.getElementById('cropBtn');
   const textToolBtn = document.getElementById('textToolBtn');
-  const rectToolBtn = document.getElementById('rectToolBtn');
-  const circleToolBtn = document.getElementById('circleToolBtn');
-
-  // Tool-specific controls
-  const applyCropBtn = document.getElementById('applyCropBtn');
   const textInput = document.getElementById('textInput');
   const fontSizeInput = document.getElementById('fontSizeInput');
+  const rectToolBtn = document.getElementById('rectToolBtn');
+  const circleToolBtn = document.getElementById('circleToolBtn');
   const shapeFillCheckbox = document.getElementById('shapeFillCheckbox');
+  const applyCropBtn = document.getElementById('applyCropBtn');
 
-  // Group canvas interaction tool buttons for easier management of .active state
   const canvasToolBtns = [drawToolBtn, cropBtn, textToolBtn, rectToolBtn, circleToolBtn];
-
   let isDrawing, lastX, lastY, currentTool = 'draw', cropRect, isCropping, shapeStartCoords, isDrawingShape, originalImageSrc = null;
+
+  function loadAndDisplayImage(dataUrl, fromAreaCapture = false) {
+    const image = new Image();
+    image.onload = () => {
+      screenshotCanvas.width = image.width;
+      screenshotCanvas.height = image.height;
+      ctx.drawImage(image, 0, 0);
+      originalImageSrc = screenshotCanvas.toDataURL();
+      setActiveTool('draw');
+      console.log(fromAreaCapture ? "Loaded area capture image." : "Loaded full page image.");
+    };
+    image.onerror = () => {
+      console.error("Error loading image data:", fromAreaCapture ? "Area Capture" : "Full Page");
+      alert("Failed to load captured image.");
+      originalImageSrc = null;
+      ctx.clearRect(0,0,screenshotCanvas.width, screenshotCanvas.height);
+    };
+    image.src = dataUrl;
+  }
+
+  function checkPendingCaptures() {
+    chrome.storage.local.get(["pendingAreaCapture", "pendingAreaCaptureError"], (result) => {
+      if (chrome.runtime.lastError) { console.error("Error getting from storage:", chrome.runtime.lastError); return; }
+      if (result.pendingAreaCapture) {
+        console.log("Found pending area capture in storage.");
+        loadAndDisplayImage(result.pendingAreaCapture, true);
+        chrome.storage.local.remove("pendingAreaCapture", () => console.log("Cleared pendingAreaCapture."));
+      } else if (result.pendingAreaCaptureError) {
+        console.error("Pending area capture error from storage:", result.pendingAreaCaptureError);
+        alert("Previously failed to capture area: " + result.pendingAreaCaptureError);
+        chrome.storage.local.remove("pendingAreaCaptureError", () => console.log("Cleared pendingAreaCaptureError."));
+      }
+    });
+  }
+  checkPendingCaptures();
+
 
   function getMousePos(canvas, evt) {
     const rect = canvas.getBoundingClientRect();
@@ -33,39 +65,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function setActiveTool(toolName) {
     currentTool = toolName;
-    isDrawing = isCropping = isDrawingShape = false; // Reset general drawing flags
-    shapeStartCoords = cropRect = null; // Reset tool-specific data
+    isDrawing = isCropping = isDrawingShape = false;
+    shapeStartCoords = cropRect = null;
 
-    canvasToolBtns.forEach(btn => btn && btn.classList.remove('active')); // Clear active state from all
+    canvasToolBtns.forEach(btn => btn && btn.classList.remove('active'));
 
-    const activeBtn = document.getElementById(toolName + "ToolBtn");
-    if (activeBtn && canvasToolBtns.includes(activeBtn)) {
-        activeBtn.classList.add('active');
+    if (toolName !== 'captureArea') {
+        const activeBtn = document.getElementById(toolName + "ToolBtn");
+        if (activeBtn && canvasToolBtns.includes(activeBtn)) activeBtn.classList.add('active');
     }
 
-    // Manage visibility of controls based on the new tool
-    applyCropBtn.style.display = 'none'; // Always hide applyCropBtn unless a crop is made
-    if (toolName === 'crop' && originalImageSrc) {
-        redrawOriginalImage(); // Clear any previous crop selection visuals
-    }
+    applyCropBtn.style.display = 'none';
+    if (toolName === 'crop' && originalImageSrc) redrawOriginalImage();
 
-    // Text tool controls
-    const textControlElements = [textInput, fontSizeInput, document.querySelector('label[for="textInput"]'), document.querySelector('label[for="fontSizeInput"]')];
-    textControlElements.forEach(el => el.style.display = (toolName === 'text') ? 'block' : 'none');
+    const textControls = [textInput, fontSizeInput, document.querySelector('label[for="textInput"]'), document.querySelector('label[for="fontSizeInput"]')];
+    textControls.forEach(el => el.style.display = (toolName === 'text') ? 'block' : 'none');
 
-    // Shape tool controls (fill checkbox)
     const shapeFillControlGroup = shapeFillCheckbox.parentElement;
-    if (shapeFillControlGroup) {
-        shapeFillControlGroup.style.display = (toolName === 'rectangle' || toolName === 'circle') ? 'flex' : 'none';
-    }
+    if (shapeFillControlGroup) shapeFillControlGroup.style.display = (toolName === 'rectangle' || toolName === 'circle') ? 'flex' : 'none';
 
-    // Common drawing attribute controls
-    // Color picker: used by draw, text, shapes
     colorPicker.parentElement.style.display = ['draw', 'text', 'rectangle', 'circle'].includes(toolName) ? 'flex' : 'none';
-    // Line width: used by draw, shapes
     lineWidthInput.parentElement.style.display = ['draw', 'rectangle', 'circle'].includes(toolName) ? 'flex' : 'none';
-
-    console.log("Active tool:", currentTool);
+    console.log("Popup Active tool:", currentTool);
   }
 
   function redrawOriginalImage(callback) {
@@ -75,87 +96,66 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const img = new Image();
     img.onload = () => {
-      screenshotCanvas.width = img.width; screenshotCanvas.height = img.height;
+      if (screenshotCanvas.width !== img.width || screenshotCanvas.height !== img.height) {
+        screenshotCanvas.width = img.width; screenshotCanvas.height = img.height;
+      }
       ctx.clearRect(0, 0, img.width, img.height); ctx.drawImage(img, 0, 0);
       if (callback) callback();
     };
-    img.onerror = () => { console.error("Err loading original img for redraw."); if (callback) callback(); };
+    img.onerror = () => { console.error("Popup: Err loading original img for redraw."); if (callback) callback(); };
     img.src = originalImageSrc;
   }
 
-  // --- Capture Buttons ---
-  captureBtn.addEventListener('click', () => { // Full page
+  captureBtn.addEventListener('click', () => {
     ctx.clearRect(0, 0, screenshotCanvas.width, screenshotCanvas.height);
     originalImageSrc = cropRect = null;
     setActiveTool('draw');
     chrome.runtime.sendMessage({ action: "capture" }, handleCaptureResponse);
   });
 
-  captureAreaBtn.addEventListener('click', () => { // Selected area
-    // Popup might close. No tool is "active" on the popup itself.
+  captureAreaBtn.addEventListener('click', () => {
     chrome.runtime.sendMessage({ action: "initiateAreaCapture" });
   });
 
-  // --- Message Handling from Background ---
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "areaCaptured") {
+      console.log("Popup received areaCaptured (fromStorage:", message.fromStorage,")");
       if (message.dataUrl) {
-        const image = new Image();
-        image.onload = () => {
-          screenshotCanvas.width = image.width; screenshotCanvas.height = image.height;
-          ctx.drawImage(image, 0, 0);
-          originalImageSrc = screenshotCanvas.toDataURL();
-          setActiveTool('draw');
-        };
-        image.onerror = () => console.error("Error loading areaCaptured image data.");
-        image.src = message.dataUrl;
+          loadAndDisplayImage(message.dataUrl, true);
       }
     } else if (message.action === "areaCaptureFailed") {
-      console.error("Area capture failed:", message.error);
+      console.error("Popup received areaCaptureFailed:", message.error, "(fromStorage:", message.fromStorage, ")");
       alert("Could not capture selected area: " + message.error);
       setActiveTool('draw');
+      if (message.fromStorage === false || message.fromStorage === undefined) {
+          chrome.storage.local.remove("pendingAreaCaptureError", () => console.log("Popup cleared pendingAreaCaptureError after direct fail msg."));
+      }
     }
-    // Note: `sendResponse` is not used for these messages from background.
   });
 
-  function handleCaptureResponse(response) { // For full page capture that uses sendResponse
+  function handleCaptureResponse(response) {
       if (chrome.runtime.lastError) { console.error("Full page capture error:", chrome.runtime.lastError.message); return; }
       if (response && response.image_data_url) {
-        const image = new Image();
-        image.onload = () => {
-          screenshotCanvas.width = image.width; screenshotCanvas.height = image.height;
-          ctx.drawImage(image, 0, 0);
-          originalImageSrc = screenshotCanvas.toDataURL();
-          setActiveTool('draw');
-        };
-        image.onerror = () => console.error("Error loading image_data_url for canvas (full page).");
-        image.src = response.image_data_url;
+        loadAndDisplayImage(response.image_data_url, false);
       } else if (response && response.error) {
           console.error("Full page capture failed (response.error):", response.error);
           alert("Full page capture failed: " + response.error);
       }
   }
 
-  // --- Tool Button Event Listeners ---
   if (drawToolBtn) drawToolBtn.addEventListener('click', () => setActiveTool('draw'));
   if (cropBtn) cropBtn.addEventListener('click', () => setActiveTool('crop'));
   if (textToolBtn) textToolBtn.addEventListener('click', () => { setActiveTool('text'); if (textInput) textInput.focus(); });
   if (rectToolBtn) rectToolBtn.addEventListener('click', () => setActiveTool('rectangle'));
   if (circleToolBtn) circleToolBtn.addEventListener('click', () => setActiveTool('circle'));
 
-  // --- Implicit Tool Setting via Controls (Optional: could be removed if explicit tool buttons are preferred) ---
-  // colorPicker.addEventListener('input', () => { if(!['text','rectangle','circle','crop'].includes(currentTool)) setActiveTool('draw'); });
-  // lineWidthInput.addEventListener('input', () => { if(!['rectangle','circle','crop', 'text'].includes(currentTool)) setActiveTool('draw'); });
-  // Disabling these implicit switches for now, relying on explicit tool button clicks.
-
-  // --- Action Buttons ---
-  applyCropBtn.addEventListener('click', () => {
+  applyCropBtn.addEventListener('click', () => { /* ... (logic is identical, no changes needed for this subtask) ... */
     if (cropRect && originalImageSrc) {
       const img = new Image();
       img.onload = () => {
         const cw = Math.abs(cropRect.endX - cropRect.startX); const ch = Math.abs(cropRect.endY - cropRect.startY);
         const csX = Math.min(cropRect.startX, cropRect.endX); const csY = Math.min(cropRect.startY, cropRect.endY);
-        if (cw < 1 || ch < 1) { setActiveTool('draw'); return; } // Crop too small
+        if (cw < 1 || ch < 1) { setActiveTool('draw'); return; }
         const tempC = document.createElement('canvas'); tempC.width = img.width; tempC.height = img.height;
         tempC.getContext('2d').drawImage(img, 0, 0);
         screenshotCanvas.width = cw; screenshotCanvas.height = ch;
@@ -163,18 +163,16 @@ document.addEventListener('DOMContentLoaded', () => {
         originalImageSrc = screenshotCanvas.toDataURL(); setActiveTool('draw');
       };
       img.src = originalImageSrc;
-    } else { setActiveTool('draw'); } // Fallback if something went wrong
+    } else { setActiveTool('draw'); }
   });
 
-  // --- Canvas Event Handlers (Delegated by currentTool) ---
-  screenshotCanvas.addEventListener('mousedown', (e) => {
-    if (!originalImageSrc && currentTool !== 'text') { // Allow text on blank canvas only if sized.
+  screenshotCanvas.addEventListener('mousedown', (e) => { /* ... (logic is identical, no changes needed) ... */
+    if (!originalImageSrc && currentTool !== 'text') {
          if (currentTool !== 'text' || (currentTool === 'text' && (screenshotCanvas.width === 0 || screenshotCanvas.height === 0))) {
-            console.warn("No image on canvas to edit, or canvas not ready for text."); return;
+             console.warn("No image on canvas to edit, or canvas not ready for text."); return;
          }
     }
     const pos = getMousePos(screenshotCanvas, e);
-
     if (currentTool === 'draw') {
       if (!originalImageSrc) return;
       isDrawing = true; [lastX, lastY] = [pos.x, pos.y];
@@ -186,11 +184,11 @@ document.addEventListener('DOMContentLoaded', () => {
       isCropping = true; cropRect = { startX: pos.x, startY: pos.y, endX: pos.x, endY: pos.y };
       applyCropBtn.style.display = 'none';
     } else if (currentTool === 'text') {
-      const text = textInput.value.trim(); if (!text) { alert("Please enter text."); return; }
+      const textVal = textInput.value.trim(); if (!textVal) { alert("Please enter text."); return; }
       const fontSize = fontSizeInput.value || "16";
       redrawOriginalImage(() => {
           ctx.font = `${fontSize}px sans-serif`; ctx.fillStyle = colorPicker.value;
-          ctx.fillText(text, pos.x, pos.y);
+          ctx.fillText(textVal, pos.x, pos.y); // Use textVal here
           originalImageSrc = screenshotCanvas.toDataURL();
       });
     } else if (currentTool === 'rectangle' || currentTool === 'circle') {
@@ -199,10 +197,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  screenshotCanvas.addEventListener('mousemove', (e) => {
-    if (!originalImageSrc && currentTool !== 'text') return; // Generally no drawing if no image
+  screenshotCanvas.addEventListener('mousemove', (e) => { /* ... (logic is identical, no changes needed) ... */
+    if (!originalImageSrc && currentTool !== 'text') return;
     const pos = getMousePos(screenshotCanvas, e);
-
     if (currentTool === 'draw' && isDrawing) {
       ctx.lineTo(pos.x, pos.y); ctx.stroke(); [lastX, lastY] = [pos.x, pos.y];
     } else if (currentTool === 'crop' && isCropping && cropRect) {
@@ -213,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.setLineDash([]);
       });
     } else if ((currentTool === 'rectangle' || currentTool === 'circle') && isDrawingShape && shapeStartCoords) {
-      redrawOriginalImage(() => { // Preview shape
+      redrawOriginalImage(() => {
         ctx.beginPath(); ctx.strokeStyle=colorPicker.value; ctx.lineWidth=lineWidthInput.value;
         const fill = shapeFillCheckbox.checked; if (fill) ctx.fillStyle=colorPicker.value;
         if (currentTool === 'rectangle') {
@@ -228,20 +225,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  screenshotCanvas.addEventListener('mouseup', (e) => {
+  screenshotCanvas.addEventListener('mouseup', (e) => { /* ... (logic is identical, no changes needed) ... */
     if (!originalImageSrc && currentTool !== 'text') return;
     const finalPos = getMousePos(screenshotCanvas, e);
-
     if (currentTool === 'draw' && isDrawing) {
       isDrawing=false; originalImageSrc=screenshotCanvas.toDataURL();
     } else if (currentTool === 'crop' && isCropping) {
       isCropping=false;
       if (cropRect && (Math.abs(cropRect.endX-cropRect.startX)>5 && Math.abs(cropRect.endY-cropRect.startY)>5)) {
         applyCropBtn.style.display='block';
-      } else { cropRect=null; if(originalImageSrc) redrawOriginalImage(); } // Clear invalid crop rect
+      } else { cropRect=null; if(originalImageSrc) redrawOriginalImage(); }
     } else if ((currentTool === 'rectangle' || currentTool === 'circle') && isDrawingShape && shapeStartCoords) {
       isDrawingShape=false;
-      redrawOriginalImage(() => { // Draw final shape
+      redrawOriginalImage(() => {
         ctx.beginPath(); ctx.strokeStyle=colorPicker.value; ctx.lineWidth=lineWidthInput.value;
         const fill=shapeFillCheckbox.checked; if(fill)ctx.fillStyle=colorPicker.value;
         if (currentTool === 'rectangle') {
@@ -252,49 +248,33 @@ document.addEventListener('DOMContentLoaded', () => {
           ctx.ellipse(cX,cY,rX,rY,0,0,2*Math.PI);
         }
         if(fill)ctx.fill(); ctx.stroke();
-        originalImageSrc=screenshotCanvas.toDataURL(); // Commit shape
+        originalImageSrc=screenshotCanvas.toDataURL();
       });
       shapeStartCoords=null;
     }
   });
 
-  screenshotCanvas.addEventListener('mouseout', (e) => {
-    // If drawing, finalize the current line segment.
-    if (isDrawing) {
-        isDrawing=false; if(originalImageSrc) originalImageSrc = screenshotCanvas.toDataURL();
-    }
-    // If cropping, and a valid crop was made, show apply. Otherwise, clear.
-    else if (isCropping) {
-        isCropping=false;
-        if (cropRect && (Math.abs(cropRect.endX-cropRect.startX)>5 && Math.abs(cropRect.endY-cropRect.startY)>5)) {
-            applyCropBtn.style.display='block';
-        } else {
-            cropRect=null; applyCropBtn.style.display='none';
-            if(originalImageSrc) redrawOriginalImage(); // Clear invalid crop rect visual
-        }
-    }
-    // If drawing a shape, cancel it (clear preview).
-    else if (isDrawingShape) {
-        isDrawingShape=false; shapeStartCoords=null;
-        if(originalImageSrc) redrawOriginalImage();
-        console.log("Shape drawing cancelled: mouse left canvas during draw.");
-    }
+  screenshotCanvas.addEventListener('mouseout', (e) => { /* ... (logic is identical, no changes needed) ... */
+    if (isDrawing) { isDrawing=false; if(originalImageSrc) originalImageSrc = screenshotCanvas.toDataURL(); }
+    else if (isCropping) { isCropping=false;
+      if (cropRect && (Math.abs(cropRect.endX-cropRect.startX)>5 && Math.abs(cropRect.endY-cropRect.startY)>5)) {
+        applyCropBtn.style.display='block';
+      } else { cropRect=null; applyCropBtn.style.display='none'; if(originalImageSrc) redrawOriginalImage(); }
+    } else if (isDrawingShape) { isDrawingShape=false; shapeStartCoords=null; if(originalImageSrc) redrawOriginalImage(); }
   });
 
-  // --- Output Buttons ---
-  saveBtn.addEventListener('click', () => {
-    if (!originalImageSrc && screenshotCanvas.width === 0) { alert("Canvas is empty. Nothing to save."); return; }
+  saveBtn.addEventListener('click', () => { /* ... (logic is identical, no changes needed) ... */
+    if (!originalImageSrc && screenshotCanvas.width === 0) { alert("Canvas is empty."); return; }
     redrawOriginalImage(() => {
         const dataURL = screenshotCanvas.toDataURL("image/png");
         chrome.downloads.download({url:dataURL,filename:"screenshot.png",saveAs:false},(id) => {
           if(chrome.runtime.lastError)console.error("Download error:",chrome.runtime.lastError.message);
-          else if(!id)console.warn("Download did not start. Check permissions or browser logs.");
-          else console.log("Image saved with download ID:",id);
+          else if(!id)console.warn("Download did not start."); else console.log("Image saved, ID:",id);
         });
     });
   });
 
-  copyToClipboardBtn.addEventListener('click', async () => {
+  copyToClipboardBtn.addEventListener('click', async () => { /* ... (logic is identical, no changes needed) ... */
     if (!originalImageSrc && screenshotCanvas.width === 0) { alert("No image to copy."); return; }
     redrawOriginalImage(async () => {
         try {
@@ -312,6 +292,28 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Initialize with the draw tool active.
+  // --- Open in Editor Button ---
+  if(openInEditorBtn) {
+    openInEditorBtn.addEventListener('click', () => {
+        if (!originalImageSrc && screenshotCanvas.width === 0) {
+            alert("No image to open in editor. Capture an image first.");
+            return;
+        }
+        // Ensure the canvas is up-to-date with originalImageSrc before getting its data URL
+        redrawOriginalImage(() => {
+            const currentImageDataUrl = screenshotCanvas.toDataURL();
+            chrome.storage.local.set({ imageToEditInEditor: currentImageDataUrl }, () => {
+                if (chrome.runtime.lastError) {
+                    console.error("Error setting image to storage for editor:", chrome.runtime.lastError);
+                    alert("Could not prepare image for editor. Please try again.");
+                    return;
+                }
+                chrome.tabs.create({ url: chrome.runtime.getURL("editor.html") });
+                window.close(); // Close the popup after opening the editor tab
+            });
+        });
+    });
+  }
+
   setActiveTool('draw');
 });
